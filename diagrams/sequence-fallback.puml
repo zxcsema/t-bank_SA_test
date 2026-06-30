@@ -1,0 +1,38 @@
+@startuml
+title Sequence Diagram. Переход на fallback
+
+actor "Пользователь" as User
+participant "Client Application" as Client
+participant "Recommendation Service" as RecService
+participant "ML Recommendation Service" as ML
+participant "Fallback Recommendation Module" as Fallback
+participant "User Profile Service" as Profile
+participant "User History Service" as History
+participant "Popularity Service" as Popularity
+
+User -> Client : Открывает рекомендации
+Client -> RecService : POST /api/v1/recommendations
+RecService -> RecService : Проверить запрос и права
+RecService -> ML : Запрос рекомендаций
+
+alt Тайм-аут, ошибка, пустой ответ или низкий confidence
+  ML --> RecService : Ошибка или неподходящий результат
+  RecService -> RecService : Зафиксировать fallbackReason
+  RecService -> Fallback : Сформировать рекомендации
+  Fallback -> Profile : Получить профиль
+  Profile --> Fallback : Профиль или ошибка
+  Fallback -> History : Получить историю
+  History --> Fallback : История или ошибка
+  Fallback -> Popularity : Получить популярность
+  Popularity --> Fallback : Популярные объекты или ошибка
+  Fallback -> Fallback : Рассчитать fallbackScore
+  Fallback --> RecService : items
+  RecService --> Client : 200, source = FALLBACK, items
+else Все внутренние источники недоступны
+  RecService --> Client : 503, RECOMMENDATIONS_UNAVAILABLE
+end
+
+Client --> User : Показать рекомендации или нейтральную ошибку
+
+@enduml
+

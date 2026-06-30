@@ -1,0 +1,51 @@
+@startuml
+title Activity Diagram. Логика формирования рекомендаций
+
+start
+:Получить POST /api/v1/recommendations;
+:Проверить обязательные поля и права доступа;
+
+if (Запрос корректен?) then (да)
+  :Вызвать ML Recommendation Service;
+  :Ожидать не более 3 секунд;
+
+  if (Получен ответ ML вовремя?) then (да)
+    if (HTTP 200 и корректный JSON?) then (да)
+      if (items не пустой?) then (да)
+        if (confidence >= threshold?) then (да)
+          :Вернуть рекомендации ML;
+          :Записать source = ML;
+          stop
+        else (нет)
+          :fallbackReason = LOW_CONFIDENCE;
+        endif
+      else (нет)
+        :fallbackReason = ML_EMPTY_RESULT;
+      endif
+    else (нет)
+      :fallbackReason = ML_INVALID_RESPONSE или ML_HTTP_5XX;
+    endif
+  else (нет)
+    :fallbackReason = ML_TIMEOUT;
+  endif
+
+  :Запустить Fallback Recommendation Module;
+  :Получить профиль, историю и популярность;
+  :Применить правила частичной деградации;
+
+  if (Рекомендации сформированы?) then (да)
+    :Вернуть source = FALLBACK;
+    :Записать логи и метрики;
+    stop
+  else (нет)
+    :Вернуть 503 RECOMMENDATIONS_UNAVAILABLE;
+    :Записать ошибку fallback;
+    stop
+  endif
+else (нет)
+  :Вернуть 400 INVALID_REQUEST;
+  stop
+endif
+
+@enduml
+

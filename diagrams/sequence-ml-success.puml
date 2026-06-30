@@ -1,0 +1,21 @@
+@startuml
+title Sequence Diagram. Успешный ответ ML
+
+actor "Пользователь" as User
+participant "Client Application" as Client
+participant "Recommendation Service" as RecService
+participant "ML Recommendation Service" as ML
+
+User -> Client : Открывает рекомендации
+Client -> RecService : POST /api/v1/recommendations
+RecService -> RecService : Проверить запрос и права
+RecService -> ML : Запрос рекомендаций
+activate ML
+ML --> RecService : 200, items, confidence >= threshold
+deactivate ML
+RecService -> RecService : Проверить ответ и confidence
+RecService --> Client : 200, source = ML, items
+Client --> User : Показать рекомендации
+
+@enduml
+

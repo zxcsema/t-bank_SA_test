@@ -1,0 +1,36 @@
+# TravelTech. Резервный сценарий рекомендаций
+
+## Описание решения
+
+Решение описывает резервный сценарий для сервиса рекомендаций TravelTech. Основной источник рекомендаций - `ML Recommendation Service`; при недоступности ML, тайм-ауте, пустом или некачественном ответе сервис возвращает результат, рассчитанный по внутренним данным.
+
+Fallback не использует кэш готовых ML-предсказаний. Для ранжирования берутся профиль пользователя, история действий, параметры поездки и агрегированная популярность объектов среди анонимизированных пользователей.
+
+## Состав результата
+
+- [Анализ требований](docs/requirements.md)
+- [Архитектурное решение](docs/architecture.md)
+- [Сценарии](docs/scenarios.md)
+- [Резервный алгоритм](docs/fallback-algorithm.md)
+- [API-контракт](docs/api-contract.md)
+- [Обработка ошибок](docs/error-handling.md)
+- [Нефункциональные требования](docs/non-functional-requirements.md)
+- [Задачи для разработчиков](docs/development-tasks.md)
+- [Тестовые сценарии](docs/testing.md)
+- [Вопросы к заказчику](docs/open-questions.md)
+- [OpenAPI 3.0 YAML](api/recommendation-api.yaml)
+- [Component Diagram](diagrams/component-diagram.puml)
+- [Sequence Diagram: успешный ответ ML](diagrams/sequence-ml-success.puml)
+- [Sequence Diagram: fallback](diagrams/sequence-fallback.puml)
+- [Activity Diagram](diagrams/activity-flow.puml)
+- [BPMN-подобная схема](diagrams/recommendation-process.puml)
+
+## Основное решение
+
+`Recommendation Service` принимает запрос клиента, вызывает `ML Recommendation Service` и ожидает ответ не более 3 секунд. Если ML отвечает успешно, возвращает непустой результат и `confidence` не ниже настроенного порога, клиент получает ML-рекомендации.
+
+Если ML недоступен, отвечает дольше 3 секунд, возвращает ошибку, некорректный ответ, пустой список или низкий `confidence`, `Recommendation Service` запускает `Fallback Recommendation Module`. Резервный алгоритм использует только внутренние данные: профиль, историю действий и агрегированную популярность объектов среди анонимизированных пользователей.
+
+Пользователь получает рекомендации в едином формате. Техническая причина переключения на fallback пишется только в логи и метрики. Пользователю не показывается сообщение о проблеме ML-сервиса.
+
+Готовые ML-предсказания не кэшируются и не используются повторно.

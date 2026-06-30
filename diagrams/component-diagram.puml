@@ -1,0 +1,30 @@
+@startuml
+title Component Diagram. TravelTech рекомендации
+
+skinparam componentStyle rectangle
+
+actor "Пользователь" as User
+component "Client Application" as Client
+component "Recommendation Service" as RecService
+component "Fallback Recommendation Module" as Fallback
+component "ML Recommendation Service" as ML
+component "User Profile Service" as Profile
+component "User History Service" as History
+component "Popularity Service" as Popularity
+
+User --> Client : Запрашивает рекомендации
+Client --> RecService : POST /api/v1/recommendations
+RecService --> ML : Основной запрос рекомендаций
+RecService --> Fallback : Ошибка, тайм-аут или низкий confidence
+Fallback --> Profile : Получить интересы и настройки
+Fallback --> History : Получить историю действий
+Fallback --> Popularity : Получить популярность объектов
+RecService --> Client : Единый ответ ML или FALLBACK
+
+note right of RecService
+  Тайм-аут ML: 3 секунды.
+  Готовые ML-предсказания не кэшируются.
+end note
+
+@enduml
+

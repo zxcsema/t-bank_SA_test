@@ -1,0 +1,222 @@
+openapi: 3.0.3
+info:
+  title: TravelTech Recommendation API
+  version: 1.0.0
+  description: API формирования рекомендаций с резервным rule-based сценарием.
+servers:
+  - url: https://api.traveltech.example.com
+paths:
+  /api/v1/recommendations:
+    post:
+      summary: Получить рекомендации по поездке
+      description: Возвращает рекомендации отелей, активностей или маршрутов. При проблемах с ML возвращает fallback-рекомендации в том же формате.
+      operationId: createRecommendations
+      tags:
+        - Recommendations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Trace-Id
+          in: header
+          required: false
+          description: Технический идентификатор трассировки.
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecommendationRequest'
+            examples:
+              hotelRequest:
+                summary: Запрос рекомендаций отелей
+                value:
+                  requestId: 2d6ef5fb-19c6-4c6a-8e2e-8b0d3cc30111
+                  userId: a9f0b7a8-6506-47a8-86f5-2bbd8e7b1111
+                  tripId: a4e42eb7-2acb-460a-ae70-9184f4f31111
+                  recommendationType: HOTEL
+                  limit: 10
+      responses:
+        '200':
+          description: Рекомендации сформированы.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResponse'
+              examples:
+                fallbackResponse:
+                  summary: Ответ fallback
+                  value:
+                    requestId: 2d6ef5fb-19c6-4c6a-8e2e-8b0d3cc30111
+                    items:
+                      - entityId: f6b6dc7e-6c11-4928-a370-118cb1111111
+                        entityType: HOTEL
+                        title: Hotel Example
+                        score: 0.87
+                        reasonCodes:
+                          - MATCHES_USER_INTERESTS
+                          - POPULAR_IN_DESTINATION
+                    source: FALLBACK
+                    generatedAt: '2026-06-29T12:00:00Z'
+        '400':
+          description: Некорректный запрос.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Пользователь не авторизован.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Нет доступа к ресурсу.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Пользователь или поездка не найдены.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервиса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Рекомендации невозможно сформировать.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: RECOMMENDATIONS_UNAVAILABLE
+                message: Сейчас не удалось сформировать рекомендации. Попробуйте позже
+                traceId: 5dc37a1b-5917-4571-971a-a8a3dd111111
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RecommendationRequest:
+      type: object
+      required:
+        - requestId
+        - userId
+        - tripId
+        - recommendationType
+      properties:
+        requestId:
+          type: string
+          format: uuid
+          description: Идентификатор запроса клиента.
+        userId:
+          type: string
+          format: uuid
+          description: Идентификатор пользователя.
+        tripId:
+          type: string
+          format: uuid
+          description: Идентификатор поездки.
+        recommendationType:
+          $ref: '#/components/schemas/RecommendationType'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+          description: Количество рекомендаций.
+    RecommendationResponse:
+      type: object
+      required:
+        - requestId
+        - items
+        - source
+        - generatedAt
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecommendationItem'
+        source:
+          $ref: '#/components/schemas/RecommendationSource'
+        generatedAt:
+          type: string
+          format: date-time
+    RecommendationItem:
+      type: object
+      required:
+        - entityId
+        - entityType
+        - title
+        - score
+        - reasonCodes
+      properties:
+        entityId:
+          type: string
+          format: uuid
+        entityType:
+          $ref: '#/components/schemas/RecommendationType'
+        title:
+          type: string
+        score:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        reasonCodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReasonCode'
+    RecommendationType:
+      type: string
+      enum:
+        - HOTEL
+        - ACTIVITY
+        - ROUTE
+    RecommendationSource:
+      type: string
+      enum:
+        - ML
+        - FALLBACK
+    ReasonCode:
+      type: string
+      enum:
+        - MATCHES_USER_INTERESTS
+        - SIMILAR_TO_USER_HISTORY
+        - MATCHES_TRIP_CONTEXT
+        - POPULAR_IN_DESTINATION
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+        - traceId
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_REQUEST
+            - UNAUTHORIZED
+            - FORBIDDEN
+            - NOT_FOUND
+            - INTERNAL_ERROR
+            - RECOMMENDATIONS_UNAVAILABLE
+        message:
+          type: string
+        traceId:
+          type: string
+          format: uuid
+
