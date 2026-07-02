@@ -23,7 +23,6 @@ Fallback не использует кэш готовых ML-предсказан
 - [Sequence Diagram: успешный ответ ML](diagrams/sequence-ml-success.puml)
 - [Sequence Diagram: fallback](diagrams/sequence-fallback.puml)
 - [Activity Diagram](diagrams/activity-flow.puml)
-- [BPMN-подобная схема](diagrams/recommendation-process.puml)
 
 ## Основное решение
 
